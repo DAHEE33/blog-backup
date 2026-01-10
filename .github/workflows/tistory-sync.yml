@@ -1,0 +1,85 @@
+name: Tistory to GitHub Sync
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # 6시간마다 자동 실행
+  workflow_dispatch:  # 수동 실행 버튼 활성화
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          pip install feedparser
+      
+      - name: Create fetch script
+        run: |
+          cat > fetch_tistory.py << 'EOF'
+          import feedparser
+          import os
+          from datetime import datetime
+          
+          RSS_URL = os.environ.get('TISTORY_RSS_URL', '')
+          
+          def fetch_and_save():
+              if not RSS_URL:
+                  print("TISTORY_RSS_URL is not set!")
+                  return
+              
+              print(f"📡 Fetching from: {RSS_URL}")
+              feed = feedparser.parse(RSS_URL)
+              
+              posts_dir = 'posts'
+              os.makedirs(posts_dir, exist_ok=True)
+              
+              for entry in feed.entries:
+                  title = entry.title
+                  link = entry.link
+                  published = entry.get('published', '')
+                  content = entry.get('description', entry.get('summary', ''))
+                  
+                  # 안전한 파일명 생성
+                  safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()[:50]
+                  filename = f"{safe_title}.md"
+                  
+                  filepath = os.path.join(posts_dir, filename)
+                  
+                  with open(filepath, 'w', encoding='utf-8') as f:
+                      f.write(f"# {title}\n\n")
+                      f.write(f"**발행일:** {published}\n\n")
+                      f.write(f"**링크:** {link}\n\n")
+                      f.write("---\n\n")
+                      f.write(content)
+              
+              print(f"{len(feed.entries)}개의 포스트가 동기화되었습니다!")
+          
+          if __name__ == '__main__':
+              fetch_and_save()
+          EOF
+      
+      - name: Run sync script
+        env:
+          TISTORY_RSS_URL: ${{ secrets.TISTORY_RSS_URL }}
+        run: python fetch_tistory.py
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          if git diff --staged --quiet; then
+            echo "변경사항이 없습니다."
+          else
+            git commit -m "📝 티스토리 포스트 동기화: $(date +'%Y-%m-%d %H:%M:%S')"
+            git push
+          fi
