@@ -1,19 +1,20 @@
 import feedparser
 import os
 
-RSS_URL = os.environ.get('TISTORY_RSS_URL', '')
+# Secrets에서 주소를 가져오되, /rss가 없으면 자동으로 붙여줍니다.
+RAW_URL = os.environ.get('TISTORY_RSS_URL', '')
+RSS_URL = RAW_URL if RAW_URL.endswith('/rss') else RAW_URL.rstrip('/') + '/rss'
 
 def fetch_and_save():
-    if not RSS_URL:
+    if not RAW_URL:
         print("TISTORY_RSS_URL is not set!")
         return
     
     print(f"📡 Fetching from: {RSS_URL}")
     feed = feedparser.parse(RSS_URL)
     
-    # RSS 데이터가 비어있는지 확인
     if not feed.entries:
-        print("❌ 가져올 포스트가 없습니다. RSS 주소(/rss)를 확인해주세요.")
+        print("❌ 가져올 포스트가 없습니다. RSS 주소를 확인해주세요.")
         return
 
     posts_dir = 'posts'
@@ -23,10 +24,8 @@ def fetch_and_save():
         title = entry.title
         link = entry.link
         published = entry.get('published', entry.get('updated', ''))
-        # 티스토리 RSS 본문 파싱 보강
         content = entry.get('description', entry.get('summary', '내용 없음'))
         
-        # 파일명에서 특수문자 제거
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()[:50]
         filename = f"{safe_title}.md"
         filepath = os.path.join(posts_dir, filename)
@@ -39,3 +38,6 @@ def fetch_and_save():
             f.write(content)
     
     print(f"✅ {len(feed.entries)}개의 포스트가 성공적으로 동기화되었습니다!")
+
+if __name__ == '__main__':
+    fetch_and_save()
