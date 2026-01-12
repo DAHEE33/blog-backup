@@ -77,8 +77,8 @@ jobs:
       
       - name: Commit and push changes
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
+          git config --local user.email "todaykim10@gmail.com"
+          git config --local user.name "DAHEE33"
           git add .
           # --allow-empty를 추가해서 변경사항이 없어도 잔디가 심어지게 합니다.
           git commit -m "📝 티스토리 포스트 동기화: $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty
