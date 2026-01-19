@@ -3,7 +3,7 @@ name: Tistory to GitHub Sync
 on:
   schedule:
     - cron: '0 22 * * *'
-  workflow_dispatch:  # 수동 실행 버튼 활성화
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -57,12 +57,13 @@ jobs:
                   filename = f"{safe_title}.md"
                   filepath = os.path.join(posts_dir, filename)
                   
+                  # 파일 내용 생성
+                  post_content = f"# {title}\n\n**발행일:** {published}\n\n**링크:** {link}\n\n---\n\n{content}"
+                  
+                  # (선택 사항) 기존 파일이 있다면 내용을 읽어서 비교할 수도 있지만,
+                  # Git은 파일 내용이 같으면 '변경 없음'으로 인식하므로 덮어써도 괜찮습니다.
                   with open(filepath, 'w', encoding='utf-8') as f:
-                      f.write(f"# {title}\n\n")
-                      f.write(f"**발행일:** {published}\n\n")
-                      f.write(f"**링크:** {link}\n\n")
-                      f.write("---\n\n")
-                      f.write(content)
+                      f.write(post_content)
               
               print(f"✅ {len(feed.entries)}개의 포스트가 성공적으로 동기화되었습니다!")
 
@@ -75,11 +76,18 @@ jobs:
           TISTORY_RSS_URL: ${{ secrets.TISTORY_RSS_URL }}
         run: python fetch_tistory.py
       
+      # [핵심 변경 부분] 변경사항이 있을 때만 커밋/푸시
       - name: Commit and push changes
         run: |
           git config --local user.email "todaykim10@gmail.com"
           git config --local user.name "DAHEE33"
           git add .
-          # --allow-empty를 추가해서 변경사항이 없어도 잔디가 심어지게 합니다.
-          git commit -m "📝 티스토리 포스트 동기화: $(date +'%Y-%m-%d %H:%M:%S')" --allow-empty
-          git push
+          
+          # 'git diff --staged --quiet'는 변경사항이 없으면 0(성공), 있으면 1(실패)을 반환합니다.
+          if git diff --staged --quiet; then
+            echo "🚫 변경된 포스트가 없습니다. 커밋하지 않습니다."
+          else
+            echo "✅ 새로운 포스트가 감지되었습니다. 커밋을 진행합니다."
+            git commit -m "📝 티스토리 포스트 동기화: $(date +'%Y-%m-%d %H:%M:%S')"
+            git push
+          fi
