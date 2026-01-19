@@ -30,12 +30,13 @@ def fetch_and_save():
         filename = f"{safe_title}.md"
         filepath = os.path.join(posts_dir, filename)
         
+        # 파일 내용 생성
+        post_content = f"# {title}\n\n**발행일:** {published}\n\n**링크:** {link}\n\n---\n\n{content}"
+        
+        # (선택 사항) 기존 파일이 있다면 내용을 읽어서 비교할 수도 있지만,
+        # Git은 파일 내용이 같으면 '변경 없음'으로 인식하므로 덮어써도 괜찮습니다.
         with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(f"# {title}\n\n")
-            f.write(f"**발행일:** {published}\n\n")
-            f.write(f"**링크:** {link}\n\n")
-            f.write("---\n\n")
-            f.write(content)
+            f.write(post_content)
     
     print(f"✅ {len(feed.entries)}개의 포스트가 성공적으로 동기화되었습니다!")
 
